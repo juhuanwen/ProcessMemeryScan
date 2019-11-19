@@ -29,8 +29,8 @@ Cycle			判断周期，默认3秒
     #define LOG printf
 #endif
 #define ProcessName "co2app" //进程在系统中的名称
-#define ProcessMaxMem 430080//最大值，超过这个值，重新启动源程序 512000--500M 460800--450M  430080--420M
-#define BinRootCross "/userdata/co2app -platform linuxfb >> ScanLog &"//进程的路径，便于再次重启调用
+#define ProcessMaxMem 460800//最大值，超过这个值，重新启动源程序 512000--500M 460800--450M  430080--420M
+//#define BinRootCross "/oem/co2app -platform linuxfb >> ScanLog &"//进程的路径，便于再次重启调用
 #define Cycle 3 //判断周期
 void GetProcessIdByName(char * Name,char * ID);
 int GetMemByID(char * ID);	
@@ -54,6 +54,7 @@ int main()
 					}
 				}
 			if(memSize>ProcessMaxMem){
+				system("date");
 				LOG("memSize is too big ,kill it!\n");
 				LOG("memSize is %d,ProcessID=%s ,kill it!\n",memSize,id);
 				sprintf(commandBuf,"kill -s 9 %s",id);
@@ -61,13 +62,14 @@ int main()
 				sleep(1);//关闭进程后等待1秒
 				// sprintf(commandBuf,"%s",BinRootCross);
 				// system(commandBuf);//重启进程
-				system("/userdata/co2app -platform linuxfb &");
+				system("chmod 777 /oem/*");
+				system("/oem/co2app -platform linuxfb &");
 			}else{
 				sleep(Cycle);
 				j++;
 				if(j==5){
 					//system("date");
-					LOG("memSize is %d,ProcessID=%s \n",memSize,id);
+					//LOG("memSize is %d,ProcessID=%s \n",memSize,id);
 					j=0;
 				}
 			}
