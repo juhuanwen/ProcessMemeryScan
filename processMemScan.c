@@ -40,11 +40,22 @@ int main()
 {	int i=0,j=0;
 	char commandBuf[200]={0};
 	int memSize=0;//进程占用的内存大小
-	static char id[20]={0};//存储要检测的进程ID
+    char id[20]={0};//存储要检测的进程ID
+	unsigned char isExit=0;
 	system("date");
 	while(1){
+		for(i=0;i<20;i++){
+			id[i]=0;
+		}
+		isExit=0;
 		GetProcessIdByName(ProcessName,id);//获取达到进程ProcessName的ID
-		if(id!=0){
+		for(i=0;i<20;i++){
+			if(id[i]!=0){
+				isExit=1;
+				break;
+			}
+		}
+		if(isExit==1){
 			memSize=GetMemByID(id);//通过ID获取到当前使用的内存
 			Mytrum(id);//删除字符串中的所有空格
 				for(i=0;i<strlen(id);i++){//取消掉回车符
@@ -75,7 +86,9 @@ int main()
 				}
 			}
 		}else{
-			LOG("No this Process:%s exsist",ProcessName);
+			//LOG("No this Process:%s exsist",ProcessName);
+			system("date");
+			system("/oem/co2app -platform linuxfb &");
 			sleep(Cycle);
 		}
 	}
@@ -93,7 +106,11 @@ void GetProcessIdByName(char * Name,char * ID)
 	FILE *Pro_fp;
 	sprintf(item[1],"ps | grep %s | grep -v 'grep' | awk '{print $1;}'",Name);
 	Pro_fp=popen(item[1],"r");
-    fgets(config_buf,sizeof(item[0]),Pro_fp); //读取一行
+    if(fgets(config_buf,sizeof(item[0]),Pro_fp)==NULL){ //读取一行
+		pclose(Pro_fp);
+		//LOG("the process is not exit\r\n");
+		return;
+	}
     pclose(Pro_fp);
 	for(i=0;i<strlen(config_buf);i++){//取消掉回车符
 		if(*(config_buf+i)==0x0a){
