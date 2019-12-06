@@ -29,12 +29,13 @@ Cycle			判断周期，默认3秒
     #define LOG printf
 #endif
 #define ProcessName "co2app" //进程在系统中的名称
-#define ProcessMaxMem 450560//最大值，超过这个值，重新启动源程序 512000--500M 460800--450M  430080--420M 450560-440M
+#define ProcessMaxMem 460800//最大值，超过这个值，重新启动源程序 512000--500M 460800--450M  430080--420M 450560-440M
 //#define BinRootCross "/oem/co2app -platform linuxfb >> ScanLog &"//进程的路径，便于再次重启调用
 #define Cycle 3 //判断周期
 void GetProcessIdByName(char * Name,char * ID);
 int GetMemByID(char * ID);	
 char *Mytrum(char *ptr);
+long long GetFileLines(char * Name);
 
 int main()
 {	int i=0,j=0;
@@ -42,7 +43,10 @@ int main()
 	int memSize=0;//进程占用的内存大小
     char id[20]={0};//存储要检测的进程ID
 	unsigned char isExit=0;
+	long long fileLines=0;
+	long long fileLines1=1;
 	system("date");
+
 	while(1){
 		for(i=0;i<20;i++){
 			id[i]=0;
@@ -55,7 +59,9 @@ int main()
 				break;
 			}
 		}
+		
 		if(isExit==1){
+			
 			memSize=GetMemByID(id);//通过ID获取到当前使用的内存
 			Mytrum(id);//删除字符串中的所有空格
 				for(i=0;i<strlen(id);i++){//取消掉回车符
@@ -74,21 +80,40 @@ int main()
 				// sprintf(commandBuf,"%s",BinRootCross);
 				// system(commandBuf);//重启进程
 				system("chmod 777 /oem/*");
-				system("/oem/co2app -platform linuxfb &");
+				system("chmod 777 /userdata/*");
+				system("/userdata/co2app -platform linuxfb &");
 				system("date");
 			}else{
 				sleep(Cycle);
 				j++;
 				if(j==5){
+					fileLines=GetFileLines("/userdata/qDebug.txt");
+					//printf("\r\nfileLines=%lld\r\n",fileLines);
+					if(fileLines1!=fileLines){
+						fileLines1=fileLines;
+					}else{//超过15秒文件qDebug.txt行数没有变化,代表co2app死了
+						//printf("\r\nqDebug.txt is not change for 15 senconds\r\n");
+						sprintf(commandBuf,"kill -s 9 %s",id);
+						system(commandBuf);//关闭进程
+						sleep(1);//关闭进程后等待1秒
+						// sprintf(commandBuf,"%s",BinRootCross);
+						// system(commandBuf);//重启进程
+						system("chmod 777 /oem/*");
+						system("chmod 777 /userdata/*");
+						system("/userdata/co2app -platform linuxfb &");
+						system("date");
+					}
 					//system("date");
 					//LOG("memSize is %d,ProcessID=%s \n",memSize,id);
 					j=0;
 				}
+				
+				
 			}
 		}else{
 			//LOG("No this Process:%s exsist",ProcessName);
 			system("date");
-			system("/oem/co2app -platform linuxfb &");
+			system("/userdata/co2app -platform linuxfb &");
 			sleep(Cycle);
 		}
 	}
@@ -169,3 +194,71 @@ char *Mytrum(char *ptr)
     }
     return ptr;
 }
+
+long long mux10(int i)
+{
+	int j=0;
+	long long res=1;
+	for(j=0;j<i-1;j++)
+	{
+		res*=10;
+	}
+	return res;
+}
+
+long long String2Int(char * buf)
+{
+	int len=strlen(buf);
+	int i=0;
+	unsigned char ss=0;
+	long long length=0;//返回多少行
+//	printf("the length is %d\r\n",len);
+	
+	for(i=0;i<len;i++)
+	{
+		ss=*(buf+i);
+		//printf("the first is %x\r\n",ss);
+		if((ss<='9')&&(ss>='0')){//每一个ASCII位于0-9间才有效
+			length+=(ss&0x0f)*mux10(len-i);
+		}
+	}
+	//printf("length=%lld\n",length);
+	return length;
+}
+/*
+获取某个文件的总行数
+para0:文件名
+res:返回当前文件有多少行数据
+*/
+long long GetFileLines(char * Name)
+{
+	static char  item[2][200] ={0};
+	char *config_buf = item[0];
+	int i=0;
+	FILE *Pro_fp;
+	sprintf(item[1],"wc -l %s | awk '{print $1;}'",Name);
+	Pro_fp=popen(item[1],"r");
+    if(fgets(config_buf,sizeof(item[0]),Pro_fp)==NULL){ //读取一行
+		pclose(Pro_fp);
+		//LOG("the process is not exit\r\n");
+		return 0;
+	}
+    pclose(Pro_fp);
+	for(i=0;i<strlen(config_buf);i++){//取消掉回车符
+		if(*(config_buf+i)==0x0a){
+			*(config_buf+i)=0;
+			break;
+		}
+	}
+    //LOG("the file line is =%s\n",config_buf);
+	return  String2Int(config_buf);
+	
+}
+
+// void main()
+// {
+	// long long FileLength=0;
+	// FileLength=GetFileLines("qDebug.txt");
+	// LOG("the file length is %lld\r\n", FileLength);
+// }
+
